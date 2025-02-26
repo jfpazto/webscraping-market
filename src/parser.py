@@ -51,6 +51,10 @@ class Parser:
                                 name
                                 price
                                 promotion {
+                                    conditions {
+                                        price
+                                        priceBeforeTaxes
+                                    }
                                     description
                                     endDateTime
                                     startDateTime
@@ -108,7 +112,13 @@ class Parser:
             for product in category_data["products"]:
                 name = product.get("name", "Sin nombre")
                 price = product.get("price", "Precio no disponible")
-                #promotion = product.get("promotion", {}).get("description", "Sin promoción")
+                valida_promocion=True
+                promotion = product.get("promotion")
+                if promotion is None:
+                    promotion = "Sin promocion"
+                    valida_promocion=False
+                else:
+                    valida_promocion=True
                 #start_date = product.get("promotion", {}).get("startDateTime", "Fecha no disponible")
                 #end_date = product.get("promotion", {}).get("endDateTime", "Fecha no disponible")
                 image = product.get("photosUrl", "Sin imagen")
@@ -116,10 +126,12 @@ class Parser:
                 available = product.get("isAvailable", False)
                 brand = product.get("brand", "Sin marca")
 
+
                 products.append({
                     "name": name,
                     "price": price,
-                    #"promotion": promotion,
+                    "promotion":valida_promocion,
+                    "promotion_detail": promotion,
                     #"start_date": start_date,
                     #"end_date": end_date,
                     "image": image,
