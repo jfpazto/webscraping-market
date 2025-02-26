@@ -24,65 +24,88 @@ class Parser:
 
     def fetch_products_on_sale(self):
         """
-        Realiza una solicitud a la API de Makro para obtener productos en oferta.
-        
-        :return: Lista de productos en oferta.
+        Realiza solicitudes a la API de Makro para obtener todos los productos en oferta paginados.
+
+        :return: Lista completa de productos en oferta.
         """
-        # Payload de la solicitud
-        payload = json.dumps([
-            {
-                "operationName": "GetProductsByCategory",
-                "variables": {
-                    "getProductsByCategoryInput": {
-                        "categoryReference": "CT_01_18",
-                        "categoryId": "null",
-                        "clientId": "MAKRO",
-                        "storeReference": "08ABO",
-                        "currentPage": 1,
-                        "pageSize": 100,
-                        "filters": {},
-                        "googleAnalyticsSessionId": ""
-                    }
-                },
-                "query": """query GetProductsByCategory($getProductsByCategoryInput: GetProductsByCategoryInput!) {
-                    getProductsByCategory(getProductsByCategoryInput: $getProductsByCategoryInput) {
-                        category {
-                            products {
-                                name
-                                price
-                                promotion {
-                                    conditions {
-                                        price
-                                        priceBeforeTaxes
+        all_products = []
+        current_page = 1
+        total_pages = 1  # Inicialmente asumimos 1, pero lo actualizaremos
+
+        while current_page <= total_pages:
+            print(f"🔄 Obteniendo página {current_page} de {total_pages}...")
+
+            payload = json.dumps([
+                {
+                    "operationName": "GetProductsByCategory",
+                    "variables": {
+                        "getProductsByCategoryInput": {
+                            "categoryReference": "CT_01_18",
+                            "clientId": "MAKRO",
+                            "storeReference": "08ABO",
+                            "currentPage": current_page,
+                            "pageSize": 100  # Se puede ajustar según la API
+                        }
+                    },
+                    "query": """query GetProductsByCategory($getProductsByCategoryInput: GetProductsByCategoryInput!) {
+                        getProductsByCategory(getProductsByCategoryInput: $getProductsByCategoryInput) {
+                            category {
+                                products {
+                                    name
+                                    price
+                                    promotion {
+                                        conditions {
+                                            price
+                                            priceBeforeTaxes
+                                        }
+                                        description
+                                        endDateTime
+                                        startDateTime
                                     }
-                                    description
-                                    endDateTime
-                                    startDateTime
+                                    photosUrl
+                                    stock
+                                    isAvailable
+                                    brand
                                 }
-                                photosUrl
-                                stock
-                                isAvailable
-                                brand
+                            }
+                            pagination {
+                                page
+                                pages
+                                total {
+                                    value
+                                }
                             }
                         }
-                    }
-                }"""
-            }
-        ])
+                    }"""
+                }
+            ])
 
-        try:
-            # Realizar la petición POST
-            response = requests.post(self.api_url, headers=self.headers, data=payload)
-            # Validar si la respuesta es correcta
-            if response.status_code == 200:
-                data = response.json()  # Convertir a JSON
-                return self.extract_products_from_api(data)
-            else:
-                print(f"Error en la solicitud: {response.status_code}")
-                return []
-        except Exception as e:
-            print(f"Error al realizar la petición: {e}")
-            return []
+            try:
+                response = requests.post(self.api_url, headers=self.headers, data=payload)
+
+                if response.status_code == 200:
+                    data = response.json()
+
+                    # Extraer los productos de la respuesta
+                    products = self.extract_products_from_api(data)
+                    all_products.extend(products)  # Agregar productos a la lista completa
+
+                    # Actualizar la cantidad total de páginas
+                    pagination_info = data[0].get("data", {}).get("getProductsByCategory", {}).get("pagination", {})
+                    total_pages = pagination_info.get("pages", 1)  # Actualizar total de páginas
+
+                    # Avanzar a la siguiente página
+                    current_page += 1
+                else:
+                    print(f"❌ Error en la solicitud: {response.status_code}")
+                    break  # Detener en caso de error
+            except Exception as e:
+                print(f"❌ Error al realizar la petición: {e}")
+                break  # Detener en caso de error crítico
+
+        print(f"✅ Se obtuvieron {len(all_products)} productos en total.")
+        return all_products
+
 
     def extract_products_from_api(self, data):
         """
