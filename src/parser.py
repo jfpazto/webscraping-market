@@ -1,6 +1,6 @@
 import requests
 import json
-
+import os
 class Parser:
     """Clase encargada de analizar el HTML o extraer datos de la API."""
 
@@ -132,4 +132,22 @@ class Parser:
 
         return products
 
+def save_products_to_json(products, filename="outputs/products.json"):
+    """
+    Guarda la lista de productos en un archivo JSON.
 
+    :param products: Lista de productos obtenida de la API.
+    :param filename: Ruta del archivo donde se guardarán los datos.
+    """
+    try:
+        # Asegurar que la carpeta 'outputs' exista
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+        # Guardar los datos en formato JSON
+        with open(filename, "w", encoding="utf-8") as file:
+            json.dump(products, file, indent=4, ensure_ascii=False)
+
+        print(f"✅ Datos guardados correctamente en {filename}")
+
+    except Exception as e:
+        print(f"❌ Error al guardar el archivo JSON: {e}")
